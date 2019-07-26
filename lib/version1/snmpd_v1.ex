@@ -4,7 +4,7 @@ defmodule Snmpd_v1 do
   def request(data) do
     data
       |> IO.inspect(base: :hex, limit: :infinity)
-      |> Snmplib.parse
+      |> Snmplib.unpack
       |> IO.inspect
   end
 

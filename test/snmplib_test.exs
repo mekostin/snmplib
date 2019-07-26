@@ -3,7 +3,7 @@ defmodule SnmplibTest do
   doctest Snmplib
 
   test "parse" do
-    data = <<
+    request = <<
       0x30,
       0x29,
         0x02, 0x01, 0x00,
@@ -17,7 +17,45 @@ defmodule SnmplibTest do
               0x06, 0x08, 0x2b, 0x06, 0x01, 0x02, 0x01, 0x01, 0x01, 0x00,
               0x05, 0x00
     >>
-    |> Snmplib.parse
-    |> IO.inspect 
+    |> Snmplib.unpack
+
+    assert is_map(request)
+    assert [%SNMPv1.Variable{oid: ".1.3.6.1.2.1.1.1.0", value: nil}] == Map.get(request, :variable_bindings)
+
+    # |> IO.inspect
+    #
+    #
+    # with true <- is_map(answer),
+    #      [%SNMPv1.Variable{oid: ".1.3.6.1.2.1.1.1.0", value: nil}] <- Map.get(answer, :variable_bindings) do
+    #
+    #   answer
+    #     |> Map.merge(%{variable_bindings: [%SNMPv1.Variable{oid: ".1.3.6.1.2.1.1.1.0", value: "Parsed OK"}]})
+    #     |> Snmplib.pack
+    #     |> IO.inspect(base: :hex, limit: :infinity)
+    # else
+    #   _ -> IO.inspect answer
+    # end
+  end
+
+  test "pack" do
+    response = %SNMPv1.Packet{
+      community: "public",
+      error_index: 0,
+      error_status: 0,
+      request_id: 2821821491,
+      type: "response",
+      variable_bindings: [%SNMPv1.Variable{oid: ".1.3.6.1.2.1.1.1.0", value: "Parsed OK"}],
+      version: 1
+    }
+    |> Snmplib.pack
+
+    assert is_binary(response)
+  end
+
+  test "OID" do
+    for x <- 0..10000 do
+      oid = ".1.3.6.1.2.1.25.#{x}.0" |> IO.inspect |> Common.str2oid |> Common.oid2str
+      assert oid == ".1.3.6.1.2.1.25.#{x}.0"
+    end
   end
 end

@@ -1,5 +1,7 @@
 defmodule SNMPv1 do
-  use Bitwise
+  defmodule Variable do
+    defstruct oid: nil, value: nil
+  end
 
   defmodule Packet do
     defstruct version: nil,
@@ -11,9 +13,8 @@ defmodule SNMPv1 do
       variable_bindings: []
   end
 
-
   @doc """
-    unpack REQUEST A0
+    unpack
   """
   def unpack(<<0x04, com_len::little-size(8), tail::binary>>) do
     # IO.inspect "COM_LEN = #{com_len}"
@@ -45,29 +46,22 @@ defmodule SNMPv1 do
 
   def unpack_vars(<<0x30, _var_len::little-size(8), 0x06, oid_len::little-size(8), variable::binary>>, acc) do
     <<oid::bytes-size(oid_len), 0x05, 0x00, tail::binary>> = variable
-    [oid2str(oid) | acc]
+    [%Variable{oid: Common.oid2str(oid)} | acc]
   end
 
   def unpack_vars(_, acc), do: acc
 
-  def oid2str(oid) do
-    oid
-      |> :binary.bin_to_list
-      |> Enum.reduce(%{prev: nil, result: <<>>}, &calc_sub(&1, &2))
-      |> Map.get(:result) 
+  @doc """
+    pack
+  """
+
+  def pack(packet) do
+    vars = pack_vars(packet, <<>>)
+    <<0x00>>
   end
 
-  def calc_sub(sub, %{prev: nil, result: acc}) do
-    cond do
-      band(sub, 40) == 40 -> %{prev: nil, result: "#{acc}.1.#{sub-40}"}
-      band(sub, 128) == 128 -> %{prev: sub, result: "#{acc}"}
-      true -> %{prev: nil, result: "#{acc}.#{sub}"}
-    end
-  end
+  def pack_vars(%{variable_bindings: [h | t]}, acc) do
 
-  def calc_sub(sub, %{prev: prev_80, result: acc} = result) do
-    <<tmp::integer-size(16)>> = <<0x00::size(2), prev_80::size(7), sub::size(7)>>
-    %{prev: nil, result: "#{acc}.#{tmp}"}
   end
 
 end
