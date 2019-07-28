@@ -53,13 +53,15 @@ defmodule SnmplibTest do
   end
 
   test "OID" do
-    for x <- 0..65535 do
-      oid = ".1.3.6.1.2.1.25.#{x}.0"
-        # |> IO.inspect
-        |> Common.str2oid
-        |> Common.oid2str
-        
-      assert oid == ".1.3.6.1.2.1.25.#{x}.0"
+    for x <- 990..1000 do
+      for y <- 15000..65535 do
+        oid = ".1.3.6.1.2.1.#{x}.#{y}.0"
+          # |> IO.inspect
+          |> Common.str2oid
+          |> Common.oid2str
+
+          assert oid == ".1.3.6.1.2.1.#{x}.#{y}.0"
+      end
     end
   end
 end
