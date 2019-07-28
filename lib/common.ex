@@ -12,22 +12,27 @@ defmodule Common do
   def oid2str(oid) do
     oid
       |> :binary.bin_to_list
-      |> Enum.reduce(%{prev: nil, result: <<>>}, &calc_sub(&1, &2))
+      |> Enum.reduce(%{prev: [], result: <<>>}, &calc_sub(&1, &2))
       |> Map.get(:result)
   end
 
-  def calc_sub(sub, %{prev: nil, result: <<>>})
-  when (sub >= 40), do: %{prev: nil, result: ".#{div(sub, 40)}.#{rem(sub, 40)}"}
+  def calc_sub(sub, %{prev: [], result: <<>>})
+  when (sub >= 40), do: %{prev: [], result: ".#{div(sub, 40)}.#{rem(sub, 40)}"}
 
-  def calc_sub(sub, %{prev: nil, result: acc})
-  when (sub &&& 0x80) == 0x80, do: %{prev: sub, result: "#{acc}"}
+  def calc_sub(sub, %{prev: [], result: acc})
+  when (sub &&& 0x80) == 0, do: %{prev: [], result: "#{acc}.#{sub}"}
 
-  def calc_sub(sub, %{prev: nil, result: acc}), do: %{prev: nil, result: "#{acc}.#{sub}"}
+  def calc_sub(sub, %{prev: prev, result: acc})
+  when (sub &&& 0x80) != 0, do: %{prev: [sub &&& 0x7F | prev], result: acc}
 
-  def calc_sub(sub, %{prev: prev_80, result: acc} = result) do
-    <<tmp::integer-size(16)>> = <<0x00::size(2), prev_80::size(7), sub::size(7)>>
-    %{prev: nil, result: "#{acc}.#{tmp}"}
+  def calc_sub(sub, %{prev: prev, result: acc} = result)
+  when (sub &&& 0x80) == 0 do
+    prev = [sub | prev]
+    sz = (Enum.count(prev) * 8) - Enum.count(prev)
+    <<val::integer-size(sz)>> = Enum.reduce(prev, <<>>, fn (x, acc) -> <<x::size(7), acc::bitstring>> end)
+    %{prev: [], result: "#{acc}.#{val}"}
   end
+
 
   def str2oid(str) do
     str
@@ -41,22 +46,19 @@ defmodule Common do
   def sub_calc(sub, %{prev: [], result: <<>>}), do: %{prev: [sub * 40], result: <<>>}
   def sub_calc(sub, %{prev: [prev], result: <<>>}), do: %{prev: [], result: <<prev + sub>>}
 
-  def sub_calc(sub, %{prev: prev, result: acc})
-  when (sub > 127) and (sub &&& 0x80) == 0 do
-    IO.inspect {sub, prev}
-    sub_calc(sub >>> 7, %{prev: [ <<sub::size(7)>> | prev], result: acc})
-  end
+  def sub_calc(sub, %{prev: [], result: acc})
+  when (sub >= 0x80), do: sub_calc(sub >>> 7, %{prev: [<<0::size(1), sub::size(7)>>], result: acc})
 
   def sub_calc(sub, %{prev: prev, result: acc})
-  when (sub > 127) and (sub &&& 0x80) != 0 do
-    IO.inspect {sub, prev}
-    sub_calc(sub >>> 7, %{prev: [ <<sub::size(7)>> | prev], result: acc})
+  when (sub >= 0x80), do: sub_calc(sub >>> 7, %{prev: [<<1::size(1), sub::size(7)>> | prev], result: acc})
+
+  def sub_calc(sub, %{prev: [], result: acc})
+  when sub < 0x80, do: %{prev: [], result: acc <> <<sub>>}
+
+  def sub_calc(sub, %{prev: prev, result: acc})
+  when (sub < 0x80) do
+    prev = [<<1::size(1), sub::size(7)>> | prev]
+    %{prev: [], result: acc <> Enum.reduce(prev, <<>>, fn(x, a) -> a <> x end)}
   end
 
-
-  def sub_calc(sub, %{prev: [], result: acc}), do: %{prev: [], result: acc <> <<sub>>}
-
-  def sub_calc(sub, %{prev: prev, result: acc}) do
-    %{prev: [], result: acc <> Enum.reduce(prev, <<>>, fn(x, acc) -> acc <> x end)  <> <<sub>>}
-  end
 end
