@@ -17,9 +17,16 @@ defmodule Snmplib do
   def unpack(<<0x02, 0x01, 0x00, tail::binary>>), do: SNMPv1.unpack(tail)
   def unpack(_), do: {:error, :bad_format}
 
-  def pack(%{version: 1} = packet) do
-    pp = <<0x02, 0x01, 0x00>> <> SNMPv1.pack(packet)
-    <<0x30, byte_size(pp)>>  <> pp
+  @doc """
+  pack SNMPv1
+  """
+
+  def pack(%{version: 1, community: comm} = packet) do
+    pp = <<0x02, 0x01, 0x00,
+           0x04, byte_size(comm), comm::binary,
+           SNMPv1.pack(packet)::binary>>
+
+    <<0x30, byte_size(pp), pp::binary>>
   end
 
   def pack(_), do: {:error, :bad_format}

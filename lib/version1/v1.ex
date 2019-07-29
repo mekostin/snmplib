@@ -56,12 +56,32 @@ defmodule SNMPv1 do
   """
 
   def pack(packet) do
-    vars = pack_vars(packet, <<>>)
-    <<0x00>>
+    pack_vars(<<>>, packet)
+      |> pack_pdu(packet)
   end
 
-  def pack_vars(%{variable_bindings: [h | t]}, acc) do
+  def pack_vars(acc, %{variable_bindings: []}), do: <<0x30, byte_size(acc), acc::binary>>
+  def pack_vars(acc, %{variable_bindings: [%{oid: s_oid, value: value} | t]}) do
+    oid = Common.str2oid(s_oid)
+    acc = <<0x06, byte_size(oid), oid::binary, pack_value(value)::binary, acc::binary>>
+    <<0x30, byte_size(acc), acc::binary>>
+      |> pack_vars(%{variable_bindings: t})
+  end
 
+  def pack_value(value) when is_binary(value) do
+    <<0x04, byte_size(value), value::binary>>
+  end
+
+  def pack_value(value) when is_integer(value) do
+    <<0x02, 0x01, value::little>>
+  end
+
+  def pack_pdu(acc, %{error_index: err_i, error_status: err_s, request_id: req_id}) do
+    acc = <<0x02, 0x04, req_id::little-size(32),
+            0x02, 0x01, err_s::size(8),
+            0x02, 0x01, err_i::size(8), acc::binary>>
+
+    <<0xa2, byte_size(acc), acc::binary>>
   end
 
 end
