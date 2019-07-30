@@ -17,10 +17,7 @@ defmodule SNMPv1 do
     unpack
   """
   def unpack(<<0x04, com_len::little-size(8), tail::binary>>) do
-    # IO.inspect "COM_LEN = #{com_len}"
     <<community::bytes-size(com_len), 0xA0, pdu_len::little-size(8), pdu::binary>> = tail
-    # IO.inspect "COMMUNITY = #{community}"
-    # IO.inspect "PDU_LEN = #{pdu_len}"
     if pdu_len == byte_size(pdu) do
       %Packet{version: 1, community: community, type: "request"}
         |> Map.merge(unpack_pdu(pdu))
@@ -73,7 +70,9 @@ defmodule SNMPv1 do
   end
 
   def pack_value(value) when is_integer(value) do
-    <<0x02, 0x01, value::little>>
+    bytes = Common.sizeof(value)
+    bits = bytes * 8
+    <<0x02, bytes, value::integer-size(bits)>>
   end
 
   def pack_pdu(acc, %{error_index: err_i, error_status: err_s, request_id: req_id}) do

@@ -61,4 +61,14 @@ defmodule Common do
     %{prev: [], result: acc <> Enum.reduce(prev, <<>>, fn(x, a) -> a <> x end)}
   end
 
+  def sizeof(value) when is_binary(value), do: byte_size(value)
+  def sizeof(value) when is_integer(value) do
+    cond do
+      (value &&& 0xFF000000)!=0 -> 4
+      (value &&& 0x00FF0000)!=0 -> 3
+      (value &&& 0x0000FF00)!=0 -> 2
+      true -> 1
+    end
+  end
+
 end
